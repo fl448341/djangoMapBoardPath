@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+  <link type="css" rel="stylesheet" href="./style.css">
+  <h1>Welcome, {{ user.username }}!</h1>
+
+  <a class="btn" href="{% url 'polls:route_create' %}">New Board</a>
+    
+  <h2>My routes</h2>
+  <ul>
+    {% for route in routes %}
+      <li>
+        <a href="{% url 'polls:route_detail' route.id %}">
+          {{ route.name }}
+        </a>
+      </li>
+    {% empty %}
+      <li>There are no routes you've created.</li>
+    {% endfor %}
+  </ul>
+</div>
+{% endblock %}

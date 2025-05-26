@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="container">
+ <h2>Select Background</h2>
+ <ul>
+ {% for bg in backgrounds %}
+   <li><a href="{% url 'polls:route_create' %}?background_id={{ bg.id }}">{{ bg.name }}</a></li>
+ {% endfor %}
+ </ul>
+</div>
+ {% endblock %}

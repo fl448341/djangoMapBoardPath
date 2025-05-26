@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Routes / Boards Editor</title>
+    {% load static %}
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{% static 'polls/css/style.css' %}">
+  </head>
+
+  <body>
+    <header>
+        <nav>
+          <div class="nav-links">
+    
+            {% if user.is_authenticated %}
+            <a href="{% url 'polls:route_list' %}">Routes</a>
+            <a href="{% url 'polls:board_list' %}">Boards</a>
+            <a href="{% url 'polls:board_gallery' %}">Paths</a>
+            <a href="{% url 'polls:manage_token' %}">Token API</a>
+            <form method="post" action="{% url 'logout' %}" style="display: inline">
+              {% csrf_token %}<button type="submit">Logout</button>
+            </form>
+            {% else %}
+            <a href="{% url 'login' %}">Login</a>
+            <a href="{% url 'polls:register' %}">Register</a>
+            {% endif %}        
+        </nav>
+    </header>  
+    
+
+    {% block content %}{% endblock %} {% block extra_js %}{% endblock %}
+    <footer>
+      <div class="container">
+        © 2025 Filip Łazowski, MIMUW.
+      </div>
+    </footer>
+
+  </body>
+</html>

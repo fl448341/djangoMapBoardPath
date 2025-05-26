@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+
+<h2>All boards</h2>
+<table>
+  <tr><th>Name</th><th>Author</th><th>Size</th><th>Actions</th></tr>
+  {% for b in boards %}
+    <tr>
+      <td>{{ b.name }}</td>
+      <td>{{ b.owner.username }}</td>
+      <td>{{ b.rows }}×{{ b.cols }}</td>
+      <td>
+        <a href="{% url 'polls:path_draw' b.pk %}">Draw</a>
+        {% if b.owner == user %}
+          | <a href="{% url 'polls:board_edit' b.pk %}">Edit</a>
+        {% endif %}
+      </td>
+    </tr>
+  {% endfor %}
+</table>
+</div>
+{% endblock %}

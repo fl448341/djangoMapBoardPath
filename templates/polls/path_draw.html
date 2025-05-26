@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container">`
+  <div class="page-wrap board-edit">
+  <div class="editor-panel">
+
+  <h2>Path on the board: {{ board.name }}</h2>
+      
+      <button id="savePath">💾 Save</button>
+      <span id="saveInfo" style="margin-left:12px;color:green"></span>
+  </div>
+    
+    <div class="board-panel">
+      <div id="colorPalette"></div>
+      <p hidden>
+        <span id="currentColor" style="font-weight:bold;"></span>
+      </p>
+      <div id="grid" class="grid"></div>
+    </div>
+  </div>
+</div>
+{% endblock content %}
+
+{% block extra_js %}
+  {{ board|json_script:"board-data" }}
+  {{ initial_path|json_script:"path-data" }}
+
+  <script type="module">
+    import { initPathEditor } from "{% static 'js/dist/path_editor.js' %}";
+    initPathEditor({
+      board  : JSON.parse(document.getElementById("board-data").textContent),
+      path   : JSON.parse(document.getElementById("path-data").textContent || "[]"),
+      saveUrl: "{% url 'polls:path_draw' board.id %}",
+      csrf   : "{{ csrf_token }}"
+    });
+  </script>
+{% endblock extra_js %}

@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+
+  <h2>API Token</h2>
+
+  {% if token %}
+    <p><strong>Your token:</strong></p>
+    <pre>{{ token.key }}</pre>
+
+    <form method="post">
+      {% csrf_token %}
+      <button type="submit" name="action" value="regenerate">
+        Regenerate
+      </button>
+      <br>
+      <button type="submit" name="action" value="delete">
+        Delete
+      </button>
+    </form>
+  {% else %}
+    <p>You don't have token yet.</p>
+    <form method="post" action="{% url 'polls:manage_token' %}">
+      {% csrf_token %}
+      <button type="submit" name="action" value="create">
+        Create token
+      </button>
+    </form>
+  {% endif %}
+
+  <p><a href="{% url 'polls:route_list' %}">Go back to the list of routes</a></p>
+</div>
+{% endblock %}

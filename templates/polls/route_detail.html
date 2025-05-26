@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container">
+  <style>
+    .map-container {
+      width: 800px;
+      margin: 0 auto;       
+      padding: 0 2px;       
+      position: relative;   
+      border: 1px solid #ccc;
+    }
+    .map-container img {
+      display: block;
+      max-width: 100%;
+      height: auto;
+      user-select: none;
+      border: #000;
+    }
+    .marker {
+      width: 12px;
+      height: 12px;
+      background: purple;
+      border-radius: 50%;
+      position: absolute;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+    .highlight-marker {
+      width: 16px;
+      height: 16px;
+      border: 5px solid red;
+      border-radius: 50%;
+      position: absolute;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+
+  </style>
+  <h2>Name of your map: {{ route.name }}</h2>
+
+  <div class="route-detail">
+    <div class="points-panel">
+      <h3>Points</h3>
+      <ul class="points-list">
+        {% for p in points %}
+          <li data-x="{{ p.x }}" data-y="{{ p.y }}">
+            {{ p.order }}: ({{ p.x }}, {{ p.y }})
+            <a href="#" data-id="{{ p.id }}" class="delete-link">Delete</a>
+          </li>
+        {% empty %}
+          <li>No points yet.</li>
+        {% endfor %}
+      </ul>
+    </div>
+
+    <div class="map-panel">
+      <div
+        class="map-container"
+        id="mapContainer"
+        data-points='[{% for p in points %}[{{ p.x }},{{ p.y }}]{% if not forloop.last %}, {% endif %}{% endfor %}]'
+      >
+        <img
+          id="mapImage"
+          src="{{ route.background.image.url }}"
+          alt="Background"
+        />
+        <svg
+          id="mapOverlay"
+          xmlns="http://www.w3.org/2000/svg"
+          style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none;"
+        ></svg>
+      </div>
+
+      <form
+        id="pointForm"
+        method="post"
+        action="{% url 'polls:point_add' route_pk=route.id %}"
+        style="display:none;"
+      >
+        {% csrf_token %}
+        <input type="hidden" name="x" id="inputX" />
+        <input type="hidden" name="y" id="inputY" />
+        <input type="hidden" name="order" id="inputOrder" />
+      </form>
+    </div>
+  </div>
+
+</div>
+{% endblock content %}
+
+{% block extra_js %}
+  <script type="module" src="{% static 'js/dist/index.js' %}"></script>
+{% endblock extra_js %}
