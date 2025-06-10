@@ -6,9 +6,12 @@ from .models import BackgroundImage, Route, RoutePoint, GameBoard, BoardPath
 from .forms import RouteForm, RoutePointForm
 from rest_framework.authtoken.models import Token
 from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse, HttpResponseBadRequest
+from django.http import JsonResponse, HttpResponseBadRequest, StreamingHttpResponse
 from django.urls import reverse
 import json
+import queue
+import time
+from .sse_events import register_client, unregister_client
 
 
 def register(request):
@@ -147,9 +150,17 @@ def board_create(request):
 
     return render(request, "polls/board_edit.html", {"board": None})
 
+
+from django.http import HttpResponseForbidden
+
+
 @login_required
 def board_edit(request, pk):
     board = get_object_or_404(GameBoard, pk=pk, owner=request.user)
+
+    if BoardPath.objects.filter(board=board).exists():
+        return HttpResponseForbidden(
+            "Board already has path on it. You can't change its layout.")
 
     if request.method == "POST" and request.headers.get("X-Requested-With") == "XMLHttpRequest":
         data = json.loads(request.body)
@@ -207,3 +218,26 @@ def board_gallery(request):
     boards = GameBoard.objects.all().order_by("-updated")
     return render(request, "polls/board_gallery.html", {"boards": boards})
 
+
+@login_required
+def sse_notifications(request):
+    """
+    Endpoint SSE: strumieniujemy zdarzenia do klienta.
+    """
+    def event_stream():
+        q = queue.Queue()
+        register_client(q)
+        try:
+            while True:
+                try:
+                    event = q.get(timeout=15)
+                    yield event
+                except queue.Empty:
+                    yield ": keep-alive\n\n"
+        finally:
+            unregister_client(q)
+
+    return StreamingHttpResponse(
+        event_stream(),
+        content_type="text/event-stream"
+    )

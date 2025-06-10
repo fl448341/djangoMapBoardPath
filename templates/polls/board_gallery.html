@@ -13,7 +13,11 @@
       <td>
         <a href="{% url 'polls:path_draw' b.pk %}">Draw</a>
         {% if b.owner == user %}
+          {% if b.boardpath_set.exists %}
+          | 🔒
+          {% else %}        
           | <a href="{% url 'polls:board_edit' b.pk %}">Edit</a>
+          {% endif %}
         {% endif %}
       </td>
     </tr>

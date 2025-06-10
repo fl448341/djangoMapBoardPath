@@ -150,7 +150,7 @@ export function initBoardEditor(cfg) {
                 location.href = data.redirect;
             }
             else {
-                nameErr.textContent = "Zapisano ✓";
+                nameErr.textContent = "Saved ✓";
                 setTimeout(() => (nameErr.textContent = ""), 2000);
             }
         })

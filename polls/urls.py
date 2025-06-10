@@ -18,5 +18,6 @@ urlpatterns = [
     path("boards/<int:pk>/delete/", views.board_delete, name="board_delete"),
     path("boards/<int:pk>/draw/", views.path_draw, name="path_draw"),
     path("boards/all/", views.board_gallery, name="board_gallery"),
+    path('sse/notifications/', views.sse_notifications, name='sse_notifications'),
 ]
 

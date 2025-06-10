@@ -1,123 +1,271 @@
+// src/path_editor.ts
+
 interface Cell {
   row: number;
   col: number;
   color: string;
 }
 interface Args {
-  board: any;
+  board: {
+    rows: number;
+    cols: number;
+    dots: { row: number; col: number; color: string }[];
+  };
   path: Cell[];
   saveUrl: string;
   csrf: string;
 }
 
 export function initPathEditor(cfg: Args) {
-  const $ = (id: string) => document.getElementById(id)!;
+  const $ = (id: string) => document.getElementById(id)! as HTMLElement;
   const grid = $("grid");
-  const pal = $("colorPalette");
-  const curLbl = $("currentColor");
   const saveBt = $("savePath");
   const info = $("saveInfo");
 
-  const colors = [
-    "#ffd500",
-    "#1e88ff",
-    "#ff0040",
-    "#00c77b",
-    "#ff9900",
-    "#9d4dff",
-    "#00dadb",
-    "#ff61ff",
-  ];
-  let active: string | null = null;
-  const path: Cell[] = [...cfg.path];
-
   const key = (r: number, c: number) => `${r},${c}`;
+  const neighbors = (r1: number, c1: number, r2: number, c2: number) =>
+    Math.abs(r1 - r2) + Math.abs(c1 - c2) === 1;
 
+  // busy = markery + już zatwierdzone ścieżki
   const busy = new Set<string>();
-  cfg.board.dots.forEach((d: { row: number; col: number }) =>
-    busy.add(key(d.row, d.col))
-  );
+  cfg.board.dots.forEach(d => busy.add(key(d.row, d.col)));
+  cfg.path.forEach(p => busy.add(key(p.row, p.col)));
 
-  colors.forEach((c) => {
-    const b = document.createElement("button");
-    b.className = "color-btn";
-    b.dataset.color = c;
-    b.style.background = c;
-    pal.appendChild(b);
+  // które kolory już użyte
+  const usedColors = new Set<string>(cfg.path.map(p => p.color));
+
+  // stan rysowania
+  let activeColor: string | null = null;
+  let isDrawing = false;
+  let drawPath: { r: number; c: number }[] = [];
+  let drawSet = new Set<string>();
+
+  // budowa siatki
+  grid.innerHTML = "";
+  grid.style.gridTemplate = `repeat(${cfg.board.rows},1fr)/repeat(${cfg.board.cols},1fr)`;
+  for (let r = 0; r < cfg.board.rows; r++) {
+    for (let c = 0; c < cfg.board.cols; c++) {
+      const cell = document.createElement("div");
+      cell.className = "cell";
+      cell.dataset.row = "" + r;
+      cell.dataset.col = "" + c;
+      grid.appendChild(cell);
+    }
+  }
+
+  // markery
+  cfg.board.dots.forEach(d => {
+    const cell = grid.querySelector<HTMLElement>(
+      `.cell[data-row="${d.row}"][data-col="${d.col}"]`
+    )!;
+    cell.classList.add("marker");
+    cell.dataset.markerColor = d.color;
+    // ustawiamy tylko color, nie tło
+    cell.style.color = d.color;
+    if (usedColors.has(d.color)) {
+      cell.classList.add("used");
+    }
   });
 
-  const setActive = (c: string | null) => {
-    active = c;
-    curLbl.textContent = c ?? "–";
-    curLbl.style.color = c ?? "";
-    pal
-      .querySelectorAll<HTMLButtonElement>(".color-btn")
-      .forEach((btn) =>
-        btn.classList.toggle("active", btn.dataset.color === c)
-      );
-  };
+  function isMarkerCell(r: number, c: number): boolean {
+    return cfg.board.dots.some(d => d.row === r && d.col === c);
+  }
 
-  pal.addEventListener("click", (e) => {
-    const btn = (e.target as HTMLElement).closest<HTMLButtonElement>(
-      ".color-btn"
-    );
-    if (btn) setActive(btn.dataset.color!);
-  });
+  function getDirection(from: { r: number; c: number }, to: { r: number; c: number }): string {
+    if (from.r === to.r) {
+      return from.c < to.c ? "right" : "left";
+    } else {
+      return from.r < to.r ? "down" : "up";
+    }
+  }
 
-  const { rows, cols, dots } = cfg.board;
-  grid.className = "grid";
-  grid.style.gridTemplate = `repeat(${rows},var(--cell)) / repeat(${cols},var(--cell))`;
+  function getPathType(pathIndex: number, path: { r: number; c: number }[]): string {
+    const curr = path[pathIndex];
 
-  for (let r = 0; r < rows; r++)
-    for (let c = 0; c < cols; c++) {
-      const d = document.createElement("div");
-      d.className = "cell";
-      d.dataset.row = "" + r;
-      d.dataset.col = "" + c;
-      grid.appendChild(d);
+    if (isMarkerCell(curr.r, curr.c)) {
+      return "marker";
+    }
+    if (path.length === 1) return "dot";
+
+    const prev = pathIndex > 0 ? path[pathIndex - 1] : null;
+    const next = pathIndex < path.length - 1 ? path[pathIndex + 1] : null;
+
+    if (!prev) {
+      const nextDir = getDirection(curr, next!);
+      return `line-${nextDir}`;
+    }
+    if (!next) {
+      const prevDir = getDirection(prev, curr);
+      return `line-${prevDir}`;
     }
 
-  dots.forEach((d: { row: number; col: number; color: string }) => {
-    const cell = sel(d.row, d.col);
-    cell.classList.add("marker");
-    cell.style.color = d.color;
-  });
+    const prevDir = getDirection(prev, curr);
+    const nextDir = getDirection(curr, next);
 
-  path.forEach((s) => {
-    const cell = sel(s.row, s.col);
-    cell.classList.add("trail");
-    cell.style.background = s.color;
-    busy.add(key(s.row, s.col));
-  });
+    if (prevDir === nextDir) {
+      return `line-${prevDir}`;
+    } else {
+      return `corner-${prevDir}-${nextDir}`;
+    }
+  }
 
-  grid.addEventListener("click", (e) => {
-    const cell = (e.target as HTMLElement).closest<HTMLElement>(".cell");
-    if (!cell) return;
+  function drawPathInCell(cell: HTMLElement, pathType: string, color: string) {
+    // usuń istniejącą ścieżkę
+    const existing = cell.querySelector(".path-line");
+    if (existing) existing.remove();
 
-    const r = +cell.dataset.row!,
-      c = +cell.dataset.col!,
-      k = key(r, c);
-
-    if (cell.classList.contains("marker")) return;
-
-    if (cell.classList.contains("trail")) {
-      cell.classList.remove("trail");
-      cell.style.background = "";
-      busy.delete(k);
-      const idx = path.findIndex((p) => p.row === r && p.col === c);
-      if (idx >= 0) path.splice(idx, 1);
+    if (pathType === "marker") {
+      // tylko ustawiamy color, pseudo::before zrobi wypełnienie
+      cell.style.color = color;
       return;
     }
 
-    if (!active) return;
+    const el = document.createElement("div");
+    el.className = `path-line path-${pathType}`;
+    el.style.setProperty("--path-color", color);
+    cell.appendChild(el);
+  }
 
-    cell.classList.add("trail");
-    cell.style.background = active;
-    busy.add(k);
-    path.push({ row: r, col: c, color: active });
+  // rysowanie już zapisanych ścieżek
+  const pathsByColor = new Map<string, { r: number; c: number }[]>();
+  cfg.path.forEach(p => {
+    if (!pathsByColor.has(p.color)) pathsByColor.set(p.color, []);
+    pathsByColor.get(p.color)!.push({ r: p.row, c: p.col });
+  });
+  pathsByColor.forEach((path, color) => {
+    path.forEach((pt, idx) => {
+      const cell = grid.querySelector<HTMLElement>(
+        `.cell[data-row="${pt.r}"][data-col="${pt.c}"]`
+      )!;
+      cell.classList.add("trail");
+      const type = getPathType(idx, path);
+      drawPathInCell(cell, type, color);
+    });
   });
 
-  saveBt.onclick = () => {
+  function addPreview(r: number, c: number) {
+    const k = key(r, c);
+    if (drawSet.has(k)) return;
+    drawSet.add(k);
+    drawPath.push({ r, c });
+    const cell = grid.querySelector<HTMLElement>(
+      `.cell[data-row="${r}"][data-col="${c}"]`
+    )!;
+    cell.classList.add("preview");
+    const type = getPathType(drawPath.length - 1, drawPath);
+    drawPathInCell(cell, type, activeColor!);
+  }
+
+  function clearPreview() {
+    grid.querySelectorAll<HTMLElement>(".preview").forEach(cell => {
+      cell.classList.remove("preview");
+      const p = cell.querySelector(".path-line");
+      if (p) p.remove();
+      // tło zostawiamy czarne
+    });
+    drawPath = [];
+    drawSet.clear();
+  }
+
+  function updatePreviewPaths() {
+    drawPath.forEach((pt, idx) => {
+      const cell = grid.querySelector<HTMLElement>(
+        `.cell[data-row="${pt.r}"][data-col="${pt.c}"]`
+      )!;
+      if (cell.classList.contains("preview")) {
+        const type = getPathType(idx, drawPath);
+        drawPathInCell(cell, type, activeColor!);
+      }
+    });
+  }
+
+  // obsługa rysowania
+  grid.addEventListener("mousedown", e => {
+    const el = (e.target as HTMLElement).closest(".cell") as HTMLElement | null;
+    if (!el || !el.classList.contains("marker") || el.classList.contains("used")) return;
+    activeColor = el.dataset.markerColor!;
+    isDrawing = true;
+    clearPreview();
+    const r = +el.dataset.row!;
+    const c = +el.dataset.col!;
+    drawPath = [{ r, c }];
+    drawSet = new Set([key(r, c)]);
+    e.preventDefault();
+  });
+
+  grid.addEventListener("mouseover", e => {
+    if (!isDrawing || !activeColor) return;
+    const el = (e.target as HTMLElement).closest(".cell") as HTMLElement | null;
+    if (!el) return;
+    const r = +el.dataset.row!;
+    const c = +el.dataset.col!;
+    const k = key(r, c);
+    const last = drawPath[drawPath.length - 1];
+
+    // cofnij
+    if (el.classList.contains("preview") && drawPath.length >= 2) {
+      const penult = drawPath[drawPath.length - 2];
+      if (r === penult.r && c === penult.c) {
+        const rem = drawPath.pop()!;
+        drawSet.delete(key(rem.r, rem.c));
+        const rc = grid.querySelector<HTMLElement>(
+          `.cell[data-row="${rem.r}"][data-col="${rem.c}"]`
+        )!;
+        rc.classList.remove("preview");
+        const p = rc.querySelector(".path-line");
+        if (p) p.remove();
+        updatePreviewPaths();
+      }
+      return;
+    }
+
+    if (!neighbors(last.r, last.c, r, c)) return;
+    if (busy.has(k) && !el.classList.contains("marker")) return;
+
+    // zakończenie na drugim markerze
+    if (
+      el.classList.contains("marker") &&
+      el.dataset.markerColor === activeColor &&
+      !(drawPath[0].r === r && drawPath[0].c === c)
+    ) {
+      drawPath.push({ r, c });
+      drawPath.forEach((pt, idx) => {
+        busy.add(key(pt.r, pt.c));
+        const cc = grid.querySelector<HTMLElement>(
+          `.cell[data-row="${pt.r}"][data-col="${pt.c}"]`
+        )!;
+        cc.classList.remove("preview");
+        cc.classList.add("trail");
+        const tp = getPathType(idx, drawPath);
+        drawPathInCell(cc, tp, activeColor!);
+      });
+      // oznacz markery
+      [drawPath[0], drawPath[drawPath.length - 1]].forEach(pt => {
+        const mc = grid.querySelector<HTMLElement>(
+          `.cell[data-row="${pt.r}"][data-col="${pt.c}"]`
+        )!;
+        mc.classList.add("used");
+      });
+      isDrawing = false;
+      usedColors.add(activeColor);
+      drawPath.forEach(p => cfg.path.push({ row: p.r, col: p.c, color: activeColor! }));
+      return;
+    }
+
+    if (!busy.has(k)) {
+      addPreview(r, c);
+      updatePreviewPaths();
+    }
+  });
+
+  document.addEventListener("mouseup", () => {
+    if (isDrawing) {
+      isDrawing = false;
+      clearPreview();
+    }
+  });
+
+  saveBt.addEventListener("click", () => {
     fetch(cfg.saveUrl, {
       method: "POST",
       headers: {
@@ -125,19 +273,13 @@ export function initPathEditor(cfg: Args) {
         "X-CSRFToken": cfg.csrf,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ cells: path }),
+      body: JSON.stringify({ cells: cfg.path }),
     })
-      .then((r) => r.json())
+      .then(r => r.json())
       .then(() => {
         info.textContent = "✔ zapisano";
         setTimeout(() => (info.textContent = ""), 1500);
       })
       .catch(() => alert("Błąd zapisu"));
-  };
-
-  function sel(r: number, c: number) {
-    return grid.querySelector<HTMLElement>(
-      `.cell[data-row="${r}"][data-col="${c}"]`
-    )!;
-  }
+  });
 }

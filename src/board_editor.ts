@@ -172,7 +172,7 @@ export function initBoardEditor(cfg: Init) {
         if (data.redirect) {
           location.href = data.redirect;
         } else {
-          nameErr.textContent = "Zapisano ✓";
+          nameErr.textContent = "Saved ✓";
           setTimeout(() => (nameErr.textContent = ""), 2000);
         }
       })

@@ -11,13 +11,16 @@
       <td>{{ b.name }}</td>
       <td>{{ b.rows }}×{{ b.cols }}</td>
       <td>
-        <a href="{% url 'polls:board_edit' b.pk %}">Edit</a> |
-        <a href="{% url 'polls:board_delete' b.pk %}">Delete</a>
-
+        {% if b.boardpath_set.exists %}
+            🔒
+        {% else %}
+          <a href="{% url 'polls:board_edit' b.pk %}">Edit</a> |
+          <a href="{% url 'polls:board_delete' b.pk %}">Delete</a>
+        {% endif %}
       </td>
     </tr>
   {% empty %}
-    <tr><td colspan="3">Brak plansz</td></tr>
+    <tr><td colspan="3">No boards</td></tr>
   {% endfor %}
 </table>
 </div>

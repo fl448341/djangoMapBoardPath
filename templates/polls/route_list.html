@@ -1,23 +1,453 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container">
-  <link type="css" rel="stylesheet" href="./style.css">
-  <h1>Welcome, {{ user.username }}!</h1>
+<div class="dashboard-container">
+  <style>
+    .dashboard-container {
+      min-height: 80vh;
+      padding: 2rem;
+      background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
+      animation: dashboardFadeIn 0.8s ease-out;
+    }
 
-  <a class="btn" href="{% url 'polls:route_create' %}">New Board</a>
+    @keyframes dashboardFadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .welcome-hero {
+      text-align: center;
+      margin-bottom: 3rem;
+      padding: 3rem 2rem;
+      background: linear-gradient(135deg, rgba(209, 156, 245, 0.95) 0%, rgba(209, 162, 248, 0.8) 100%);
+      border-radius: 24px;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      position: relative;
+      overflow: hidden;
+      animation: heroSlideIn 1s ease-out;
+    }
+
+    @keyframes heroSlideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-30px) scale(0.95);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .welcome-hero::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(95, 55, 141, 0.03) 0%, transparent 70%);
+      animation: backgroundPulse 15s ease-in-out infinite;
+    }
+
+    @keyframes backgroundPulse {
+      0%, 100% {
+        transform: scale(1) rotate(0deg);
+      }
+      50% {
+        transform: scale(1.1) rotate(180deg);
+      }
+    }
+
+    .welcome-hero h1 {
+      font-size: 2.5rem;
+      color: #7e32d6;
+      margin-bottom: 1rem;
+      position: relative;
+      z-index: 2;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    .welcome-hero h1::before {
+      content: "👋";
+      display: inline-block;
+      margin-right: 1rem;
+      animation: wave 2s 3 ease-in-out;
+    }
+
+    @keyframes wave {
+      0%, 100% { transform: rotate(0deg); }
+      25% { transform: rotate(20deg); }
+      75% { transform: rotate(-10deg); }
+    }
+
+    .welcome-subtitle {
+      font-size: 1.2rem;
+      color: #f1e8e8c5;
+      margin-bottom: 2rem;
+      position: relative;
+      z-index: 2;
+    }
+
+    .cta-button {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.75rem;
+      background: linear-gradient(135deg, #a725e8 0%, #7b42bb 100%);
+      color: white !important;
+      font-size: 1.1rem;
+      font-weight: 600;
+      padding: 1rem 2rem;
+      border-radius: 16px;
+      text-decoration: none;
+      transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      box-shadow: 0 8px 30px rgba(167, 37, 232, 0.25);
+      position: relative;
+      z-index: 2;
+      overflow: hidden;
+    }
+
+    .cta-button::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+      transition: left 0.6s ease;
+    }
+
+    .cta-button:hover::before {
+      left: 100%;
+    }
+
+    .cta-button:hover {
+      transform: translateY(-3px) scale(1.05);
+      box-shadow: 0 12px 40px rgba(167, 37, 232, 0.35);
+      background: linear-gradient(135deg, #7b42bb 0%, #5f378d 100%);
+    }
+
+    .cta-button::after {
+      content: "✨";
+      margin-left: 0.5rem;
+      transition: transform 0.3s ease;
+    }
+
+    .cta-button:hover::after {
+      transform: scale(1.2) rotate(10deg);
+    }
+
+    .routes-section {
+      margin-top: 3rem;
+      animation: sectionSlideUp 0.8s ease-out 0.3s both;
+    }
+
+    @keyframes sectionSlideUp {
+      from {
+        opacity: 0;
+        transform: translateY(40px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 2rem;
+      padding-bottom: 1rem;
+      border-bottom: 2px solid rgba(95, 55, 141, 0.1);
+    }
+
+    .section-header h2 {
+      font-size: 2rem;
+      color: #5f378d;
+      margin: 0;
+      position: relative;
+    }
+
+    .section-header h2::before {
+      content: "🗺️";
+      margin-right: 0.75rem;
+      font-size: 1.5rem;
+    }
+
+    .routes-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1.5rem;
+      margin-top: 2rem;
+    }
+
+    .route-card {
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.85) 100%);
+      border-radius: 20px;
+      padding: 1.5rem;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      position: relative;
+      overflow: hidden;
+      animation: cardFadeIn 0.6s ease-out;
+    }
+
+    @keyframes cardFadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.95);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .route-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(135deg, #5f378d, #7b42bb, #a725e8);
+      transition: height 0.3s ease;
+    }
+
+    .route-card:hover {
+      transform: translateY(-8px) scale(1.02);
+      box-shadow: 0 16px 50px rgba(95, 55, 141, 0.15);
+      background: linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(255, 255, 255, 0.95) 100%);
+    }
+
+    .route-card:hover::before {
+      height: 6px;
+    }
+
+    .route-card a {
+      text-decoration: none;
+      color: #333;
+      display: block;
+      position: relative;
+      z-index: 2;
+    }
+
+    .route-card a:hover {
+      color: #5f378d;
+    }
+
+    .route-title {
+      font-size: 1.2rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .route-title::before {
+      content: "📍";
+      font-size: 1rem;
+    }
+
+    .route-meta {
+      font-size: 0.9rem;
+      color: #666;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .route-meta::before {
+      content: "🕒";
+      font-size: 0.8rem;
+    }
+
+    .empty-state {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 4rem 2rem;
+      background: linear-gradient(135deg, rgba(221, 216, 216, 0.8) 0%, rgba(255, 255, 255, 0.6) 100%);
+      border-radius: 20px;
+      border: 0px dashed rgba(95, 55, 141, 0.2);
+      animation: emptyStateBounce 2s ease-in-out infinite;
+    }
+
+    @keyframes emptyStateBounce {
+      0%, 100% {
+        transform: translateY(0);
+      }
+      50% {
+        transform: translateY(-5px);
+      }
+    }
+
+    .empty-state-icon {
+      font-size: 4rem;
+      margin-bottom: 1rem;
+      display: block;
+      opacity: 0.5;
+      animation: iconFloat 3s ease-in-out infinite;
+    }
+
+    @keyframes iconFloat {
+      0%, 100% {
+        transform: rotate(0deg) scale(1);
+      }
+      33% {
+        transform: rotate(5deg) scale(1.05);
+      }
+      66% {
+        transform: rotate(-5deg) scale(0.95);
+      }
+    }
+
+    .empty-state-title {
+      font-size: 1.5rem;
+      color: #666;
+      margin-bottom: 0.5rem;
+      font-weight: 600;
+    }
+
+    .empty-state-subtitle {
+      color: #888;
+      font-size: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .empty-state-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: linear-gradient(135deg, #a725e8 0%, #7b42bb 100%);
+      color: white !important;
+      padding: 0.75rem 1.5rem;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 500;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(167, 37, 232, 0.2);
+    }
+
+    .empty-state-cta:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(167, 37, 232, 0.3);
+    }
+
+    @media (max-width: 768px) {
+      .dashboard-container {
+        padding: 1rem;
+      }
+      
+      .welcome-hero {
+        padding: 2rem 1rem;
+        margin-bottom: 2rem;
+      }
+      
+      .welcome-hero h1 {
+        font-size: 2rem;
+      }
+      
+      .routes-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+      }
+      
+      .route-card:hover {
+        transform: translateY(-4px) scale(1.01);
+      }
+    }
+
+    /* Stats badges */
+    .stats-container {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      margin: 2rem 0;
+      flex-wrap: wrap;
+    }
+
+    .stat-badge {
+      background: rgba(255, 255, 255, 0.9);
+      padding: 1rem 1.5rem;
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+      text-align: center;
+      min-width: 120px;
+      transition: all 0.3s ease;
+    }
+
+    .stat-badge:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 25px rgba(0, 0, 0, 0.1);
+    }
+
+    .stat-number {
+      font-size: 2rem;
+      font-weight: bold;
+      color: #5f378d;
+      display: block;
+    }
+
+    .stat-label {
+      font-size: 0.9rem;
+      color: #666;
+      margin-top: 0.25rem;
+    }
+  </style>
+
+  <div class="welcome-hero">
+    <h1>Welcome, {{ user.username }}!</h1>
+    <p class="welcome-subtitle">Ready to create amazing route maps? Let's get started!</p>
     
-  <h2>My routes</h2>
-  <ul>
-    {% for route in routes %}
-      <li>
-        <a href="{% url 'polls:route_detail' route.id %}">
-          {{ route.name }}
-        </a>
-      </li>
-    {% empty %}
-      <li>There are no routes you've created.</li>
-    {% endfor %}
-  </ul>
+    <div class="stats-container">
+      <div class="stat-badge">
+        <span class="stat-number">{{ routes|length }}</span>
+        <span class="stat-label">Routes Created</span>
+      </div>
+    </div>
+    
+    <a class="cta-button" href="{% url 'polls:route_create' %}">
+      <span>Create New Route</span>
+    </a>
+  </div>
+
+  <div class="routes-section">
+    <div class="section-header">
+      <h2>My Routes</h2>
+    </div>
+    
+    <div class="routes-grid">
+      {% for route in routes %}
+        <div class="route-card">
+          <a href="{% url 'polls:route_detail' route.id %}">
+            <div class="route-title">{{ route.name }}</div>
+            <div class="route-meta">Created recently</div>
+          </a>
+        </div>
+      {% empty %}
+        <div class="empty-state">
+          <span class="empty-state-icon">🗺️</span>
+          <div class="empty-state-title">No routes yet!</div>
+          <div class="empty-state-subtitle">Create your first route to get started with mapping</div>
+          <a href="{% url 'polls:route_create' %}" class="empty-state-cta">
+            <span>Create First Route</span>
+            <span>→</span>
+          </a>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
 </div>
 {% endblock %}
